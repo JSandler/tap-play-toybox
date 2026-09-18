@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Play!</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Play!">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#8fd9ff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-screen="home" data-bg="sky" data-tool="crayon">
+
+<!-- ====================== sprite templates ============================ -->
+<!-- These are cloned as real inline SVG (see core.js): document CSS cannot
+     style inside a <use> shadow tree, and the rotor / flame parts animate. -->
+<svg id="sprites" aria-hidden="true" width="0" height="0">
+  <defs>
+
+    <symbol id="s-airplane" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M95 50 L62 41 L52 12 L42 12 L44 43 L19 45 L11 27 L3 30 L7 47
+        L7 53 L3 70 L11 73 L19 55 L44 57 L42 88 L52 88 L62 59 Z"/>
+      <circle cx="76" cy="50" r="5.5" fill="#fff" opacity=".9"/>
+    </symbol>
+
+    <symbol id="s-helicopter" viewBox="0 0 100 100">
+      <rect x="6" y="52" width="47" height="11" rx="5.5" fill="currentColor"/>
+      <path fill="currentColor" d="M9 61 L15 29 L28 32 L22 61 Z"/>
+      <ellipse cx="61" cy="58" rx="28" ry="19" fill="currentColor"/>
+      <circle cx="72" cy="54" r="10" fill="#fff" opacity=".9"/>
+      <rect x="54" y="27" width="10" height="15" rx="4" fill="currentColor"/>
+      <rect x="38" y="80" width="49" height="6" rx="3" fill="#37374d"/>
+      <rect x="47" y="72" width="6" height="10" rx="3" fill="#37374d"/>
+      <rect x="74" y="72" width="6" height="10" rx="3" fill="#37374d"/>
+      <g class="tailrotor"><ellipse cx="13" cy="38" rx="3.5" ry="11" fill="#37374d"/></g>
+      <g class="rotor"><rect x="13" y="23" width="92" height="8" rx="4" fill="#37374d"/></g>
+    </symbol>
+
+    <symbol id="s-balloon" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M50 3 C73 3 88 21 88 41 C88 58 66 72 50 82 C34 72 12 58 12 41
+        C12 21 27 3 50 3 Z"/>
+      <path fill="#fff" opacity=".2" d="M50 3 C62 23 64 53 50 82 C36 53 38 23 50 3 Z"/>
+      <path fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="2.4"
+        d="M26 11 C19 34 26 61 41 79 M74 11 C81 34 74 61 59 79"/>
+      <path fill="none" stroke="#8b5a2b" stroke-width="2.6" d="M40 78 L43 87 M60 78 L57 87"/>
+      <rect x="40" y="85" width="20" height="13" rx="4" fill="#8b5a2b"/>
+    </symbol>
+
+    <symbol id="s-rocket" viewBox="0 0 100 100">
+      <g class="flame">
+        <path fill="#ffb703" d="M22 39 L1 50 L22 61 Z"/>
+        <path fill="#ff5400" d="M22 44 L11 50 L22 56 Z"/>
+      </g>
+      <path fill="currentColor" d="M30 36 L20 15 L37 22 L41 36 Z"/>
+      <path fill="currentColor" d="M30 64 L20 85 L37 78 L41 64 Z"/>
+      <path fill="currentColor" d="M20 38 H54 C70 38 84 44 93 50 C84 56 70 62 54 62 H20 Z"/>
+      <circle cx="62" cy="50" r="8" fill="#fff" opacity=".92"/>
+      <rect x="24" y="38" width="6" height="24" fill="#fff" opacity=".35"/>
+    </symbol>
+
+    <symbol id="s-boat" viewBox="0 0 100 100">
+      <rect x="47" y="10" width="5" height="58" rx="2.5" fill="#8b5a2b"/>
+      <path fill="#fff" d="M57 14 C76 31 83 48 85 66 H57 Z"/>
+      <path fill="currentColor" opacity=".42" d="M57 14 C76 31 83 48 85 66 H57 Z"/>
+      <path fill="#fff" d="M42 18 L42 66 L17 66 Z"/>
+      <path fill="currentColor" opacity=".72" d="M42 18 L42 66 L17 66 Z"/>
+      <path fill="currentColor" d="M5 67 H95 L80 88 H20 Z"/>
+      <path fill="#fff" opacity=".3" d="M5 67 H95 L92 72 H8 Z"/>
+    </symbol>
+
+    <symbol id="s-car" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M26 53 L34 32 C36 27 39 25 44 25 H60 C65 25 68 27 70 32 L78 53 Z"/>
+      <rect x="5" y="50" width="90" height="26" rx="11" fill="currentColor"/>
+      <path fill="#fff" opacity=".85" d="M33 49 L39 34 H48 V49 Z"/>
+      <path fill="#fff" opacity=".85" d="M54 34 H61 L68 49 H54 Z"/>
+      <circle cx="90" cy="58" r="4" fill="#fff3b0"/>
+      <circle cx="28" cy="76" r="12" fill="#37374d"/>
+      <circle cx="28" cy="76" r="5" fill="#c9ccd6"/>
+      <circle cx="72" cy="76" r="12" fill="#37374d"/>
+      <circle cx="72" cy="76" r="5" fill="#c9ccd6"/>
+    </symbol>
+
+    <!-- drawing tools. bodies are currentColor so each one shows the ink
+         colour the child has picked. -->
+    <symbol id="s-crayon" viewBox="0 0 100 100">
+      <g transform="rotate(-32 50 50)">
+        <path fill="currentColor" d="M50 10 L63 34 H37 Z"/>
+        <rect x="37" y="32" width="26" height="58" rx="7" fill="currentColor"/>
+        <rect x="35" y="44" width="30" height="9" fill="#fff" opacity=".6"/>
+        <rect x="35" y="62" width="30" height="9" fill="#fff" opacity=".6"/>
+      </g>
+    </symbol>
+
+    <symbol id="s-marker" viewBox="0 0 100 100">
+      <g transform="rotate(-32 50 50)">
+        <path fill="currentColor" d="M41 8 h18 l4 18 H37 Z"/>
+        <rect x="32" y="24" width="36" height="13" rx="4" fill="#c9ccd6"/>
+        <rect x="30" y="35" width="40" height="56" rx="9" fill="currentColor"/>
+        <rect x="30" y="68" width="40" height="9" fill="#fff" opacity=".45"/>
+      </g>
+    </symbol>
+
+    <symbol id="s-pencil" viewBox="0 0 100 100">
+      <g transform="rotate(-32 50 50)">
+        <path fill="#37374d" d="M50 8 L58 26 H42 Z"/>
+        <path fill="#f0c070" d="M42 24 h16 l3 12 H39 Z"/>
+        <rect x="39" y="34" width="22" height="44" rx="3" fill="currentColor"/>
+        <rect x="39" y="76" width="22" height="8" fill="#c9ccd6"/>
+        <rect x="39" y="82" width="22" height="11" rx="5" fill="#ff8a9a"/>
+      </g>
+    </symbol>
+
+    <symbol id="s-glitter" viewBox="0 0 100 100">
+      <path fill="#ffd60a" d="M48 12 L56 40 L84 48 L56 56 L48 84 L40 56 L12 48 L40 40 Z"/>
+      <path fill="#ff2d95" d="M78 16 L82 27 L93 31 L82 35 L78 46 L74 35 L63 31 L74 27 Z"/>
+      <circle cx="22" cy="76" r="6.5" fill="#0a84ff"/>
+      <circle cx="74" cy="78" r="5" fill="#34c759"/>
+    </symbol>
+
+    <!-- the trailing dots fade out: this is the ink that disappears -->
+    <symbol id="s-magic" viewBox="0 0 100 100">
+      <rect x="14" y="58" width="52" height="12" rx="6" fill="#7a5cff"
+        transform="rotate(-34 40 64)"/>
+      <path fill="#ffd60a" d="M72 10 L79 29 L98 36 L79 43 L72 62 L65 43 L46 36 L65 29 Z"/>
+      <circle cx="30" cy="36" r="5.5" fill="#fff" opacity=".9"/>
+      <circle cx="20" cy="52" r="4" fill="#fff" opacity=".55"/>
+      <circle cx="13" cy="66" r="2.8" fill="#fff" opacity=".28"/>
+    </symbol>
+
+    <!-- control glyphs -->
+    <symbol id="s-play" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M30 20 L82 50 L30 80 Z"/>
+    </symbol>
+    <symbol id="s-pause" viewBox="0 0 100 100">
+      <rect x="26" y="20" width="17" height="60" rx="6" fill="currentColor"/>
+      <rect x="57" y="20" width="17" height="60" rx="6" fill="currentColor"/>
+    </symbol>
+    <symbol id="s-reset" viewBox="0 0 100 100">
+      <path fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"
+        d="M78 36 A32 32 0 1 0 82 62"/>
+      <path fill="currentColor" d="M84 14 L88 42 L60 34 Z"/>
+    </symbol>
+    <symbol id="s-undo" viewBox="0 0 100 100">
+      <path fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"
+        d="M26 44 A30 30 0 1 1 34 74"/>
+      <path fill="currentColor" d="M14 22 L40 30 L18 48 Z"/>
+    </symbol>
+    <symbol id="s-settings" viewBox="0 0 100 100">
+      <g stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none">
+        <path d="M16 28 H84 M16 50 H84 M16 72 H84"/>
+      </g>
+      <circle cx="36" cy="28" r="10" fill="currentColor"/>
+      <circle cx="64" cy="50" r="10" fill="currentColor"/>
+      <circle cx="42" cy="72" r="10" fill="currentColor"/>
+    </symbol>
+    <symbol id="s-sound" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M14 38 H32 L54 20 V80 L32 62 H14 Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"
+        d="M66 34 A22 22 0 0 1 66 66 M78 22 A38 38 0 0 1 78 78"/>
+    </symbol>
+    <symbol id="s-muted" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M14 38 H32 L54 20 V80 L32 62 H14 Z"/>
+      <path fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"
+        d="M66 38 L92 64 M92 38 L66 64"/>
+    </symbol>
+    <symbol id="s-home" viewBox="0 0 100 100">
+      <path fill="currentColor" d="M50 12 L92 50 H78 V86 H58 V62 H42 V86 H22 V50 H8 Z"/>
+    </symbol>
+    <symbol id="s-close" viewBox="0 0 100 100">
+      <path fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"
+        d="M26 26 L74 74 M74 26 L26 74"/>
+    </symbol>
+
+    <!-- ===================== flash-card subjects =====================
+         Fully coloured, unlike the vehicle sprites above: a banana has to be
+         yellow for the card to be worth identifying. No ids anywhere in here
+         (no gradients, no clipPaths) because this markup is cloned per card. -->
+
+    <symbol id="s-dog" viewBox="0 0 100 100">
+      <ellipse cx="19" cy="46" rx="11" ry="20" fill="#8f5a2a"/>
+      <ellipse cx="81" cy="46" rx="11" ry="20" fill="#8f5a2a"/>
+      <circle cx="50" cy="54" r="30" fill="#b9793a"/>
+      <ellipse cx="50" cy="68" rx="17" ry="13" fill="#f0dcc0"/>
+      <ellipse cx="50" cy="62" rx="7" ry="5" fill="#3a2a20"/>
+      <circle cx="39" cy="46" r="4.5" fill="#3a2a20"/>
+      <circle cx="61" cy="46" r="4.5" fill="#3a2a20"/>
+      <path fill="none" stroke="#8a6a4a" stroke-width="3" stroke-linecap="round"
+        d="M50 70 v5 M50 75 q-6 4-9 0 M50 75 q6 4 9 0"/>
+    </symbol>
+
+    <symbol id="s-cat" viewBox="0 0 100 100">
+      <path fill="#7f8794" d="M25 42 L20 15 L42 31 Z"/>
+      <path fill="#7f8794" d="M75 42 L80 15 L58 31 Z"/>
+      <circle cx="50" cy="55" r="29" fill="#98a0ad"/>
+      <circle cx="39" cy="49" r="4.5" fill="#2e3440"/>
+      <circle cx="61" cy="49" r="4.5" fill="#2e3440"/>
+      <path fill="#f4a0a8" d="M50 58 l-6 6 h12 z"/>
+      <path fill="none" stroke="#5f6874" stroke-width="2.6" stroke-linecap="round"
+        d="M22 55 h-14 M23 63 l-13 5 M78 55 h14 M77 63 l13 5"/>
+      <path fill="none" stroke="#5f6874" stroke-width="3" stroke-linecap="round" d="M44 68 q6 5 12 0"/>
+    </symbol>
+
+    <symbol id="s-fish" viewBox="0 0 100 100">
+      <path fill="#e8620f" d="M30 50 L5 31 L5 69 Z"/>
+      <ellipse cx="56" cy="50" rx="32" ry="22" fill="#ff8c42"/>
+      <path fill="#e8620f" d="M48 29 q12-13 24-3 q-13 4-24 3 z"/>
+      <path fill="none" stroke="#e8620f" stroke-width="3.4" stroke-linecap="round" d="M40 42 q6 8 0 16"/>
+      <circle cx="74" cy="44" r="6" fill="#fff"/>
+      <circle cx="75" cy="44" r="3" fill="#22252e"/>
+    </symbol>
+
+    <symbol id="s-bird" viewBox="0 0 100 100">
+      <path fill="#2a86d8" d="M22 56 L2 44 L7 66 Z"/>
+      <path fill="none" stroke="#ff9f1c" stroke-width="3.6" stroke-linecap="round" d="M42 76 v9 M56 76 v9"/>
+      <ellipse cx="46" cy="56" rx="28" ry="23" fill="#4ea8f5"/>
+      <circle cx="70" cy="38" r="16" fill="#4ea8f5"/>
+      <path fill="#ffb703" d="M84 35 L99 42 L84 47 Z"/>
+      <circle cx="73" cy="34" r="3.6" fill="#22252e"/>
+      <ellipse cx="44" cy="58" rx="15" ry="10" fill="#2a86d8" transform="rotate(-16 44 58)"/>
+    </symbol>
+
+    <symbol id="s-cow" viewBox="0 0 100 100">
+      <path fill="none" stroke="#e0c9a6" stroke-width="6" stroke-linecap="round"
+        d="M29 30 q-9-7-4-14 M71 30 q9-7 4-14"/>
+      <ellipse cx="16" cy="48" rx="9" ry="12" fill="#e6e6e6"/>
+      <ellipse cx="84" cy="48" rx="9" ry="12" fill="#e6e6e6"/>
+      <ellipse cx="50" cy="54" rx="30" ry="27" fill="#fbfbfb" stroke="#dcdcdc" stroke-width="1.6"/>
+      <circle cx="30" cy="37" r="10" fill="#3a3a3a"/>
+      <circle cx="68" cy="62" r="7" fill="#3a3a3a"/>
+      <circle cx="39" cy="50" r="4.2" fill="#2e3440"/>
+      <circle cx="61" cy="50" r="4.2" fill="#2e3440"/>
+      <ellipse cx="50" cy="70" rx="20" ry="14" fill="#f7b6c2"/>
+      <ellipse cx="43" cy="69" rx="3.2" ry="4.4" fill="#d9808f"/>
+      <ellipse cx="57" cy="69" rx="3.2" ry="4.4" fill="#d9808f"/>
+    </symbol>
+
+    <symbol id="s-pig" viewBox="0 0 100 100">
+      <path fill="#ea87a0" d="M23 35 L18 16 L38 28 Z"/>
+      <path fill="#ea87a0" d="M77 35 L82 16 L62 28 Z"/>
+      <ellipse cx="50" cy="55" rx="30" ry="27" fill="#f79ab0"/>
+      <circle cx="39" cy="49" r="4.2" fill="#2e3440"/>
+      <circle cx="61" cy="49" r="4.2" fill="#2e3440"/>
+      <ellipse cx="50" cy="68" rx="17" ry="13" fill="#f7bcc9"/>
+      <ellipse cx="44" cy="68" rx="3.4" ry="5" fill="#cf6b86"/>
+      <ellipse cx="56" cy="68" rx="3.4" ry="5" fill="#cf6b86"/>
+    </symbol>
+
+    <symbol id="s-duck" viewBox="0 0 100 100">
+      <path fill="#f0c419" d="M18 64 L4 54 L9 72 Z"/>
+      <path fill="none" stroke="#ff9f1c" stroke-width="4" stroke-linecap="round" d="M38 84 v6 M54 84 v6"/>
+      <ellipse cx="44" cy="64" rx="29" ry="21" fill="#ffd84d"/>
+      <circle cx="68" cy="38" r="16" fill="#ffd84d"/>
+      <path fill="#ff9f1c" d="M82 35 q16 1 16 6 q0 5-16 4 z"/>
+      <circle cx="71" cy="33" r="3.6" fill="#22252e"/>
+      <ellipse cx="42" cy="66" rx="15" ry="10" fill="#f0c419" transform="rotate(-10 42 66)"/>
+    </symbol>
+
+    <symbol id="s-frog" viewBox="0 0 100 100">
+      <ellipse cx="20" cy="80" rx="13" ry="8" fill="#4aa856"/>
+      <ellipse cx="80" cy="80" rx="13" ry="8" fill="#4aa856"/>
+      <ellipse cx="50" cy="62" rx="32" ry="25" fill="#5ec269"/>
+      <circle cx="32" cy="36" r="14" fill="#5ec269"/>
+      <circle cx="68" cy="36" r="14" fill="#5ec269"/>
+      <circle cx="32" cy="36" r="8.5" fill="#fff"/>
+      <circle cx="68" cy="36" r="8.5" fill="#fff"/>
+      <circle cx="32" cy="37" r="4.2" fill="#22252e"/>
+      <circle cx="68" cy="37" r="4.2" fill="#22252e"/>
+      <path fill="none" stroke="#2f7d3a" stroke-width="4" stroke-linecap="round" d="M34 66 q16 12 32 0"/>
+    </symbol>
+
+    <symbol id="s-bee" viewBox="0 0 100 100">
+      <ellipse cx="40" cy="30" rx="15" ry="9" fill="#d6e8fb" stroke="#a4c3e6" stroke-width="1.8"
+        transform="rotate(-28 40 30)"/>
+      <ellipse cx="62" cy="28" rx="14" ry="8" fill="#e3f0fd" stroke="#a4c3e6" stroke-width="1.8"
+        transform="rotate(16 62 28)"/>
+      <path fill="none" stroke="#2e3440" stroke-width="3" stroke-linecap="round" d="M78 42 q2-10 10-12"/>
+      <ellipse cx="46" cy="60" rx="27" ry="21" fill="#ffd84d"/>
+      <rect x="38" y="42" width="9" height="36" rx="4" fill="#2e3440"/>
+      <rect x="54" y="44" width="9" height="32" rx="4" fill="#2e3440"/>
+      <circle cx="79" cy="53" r="12" fill="#2e3440"/>
+      <circle cx="83" cy="49" r="3.4" fill="#fff"/>
+    </symbol>
+
+    <symbol id="s-tomato" viewBox="0 0 100 100">
+      <path fill="none" stroke="#3d8b3d" stroke-width="5.5" stroke-linecap="round" d="M50 30 v-13"/>
+      <ellipse cx="50" cy="60" rx="35" ry="31" fill="#e8362c"/>
+      <path fill="none" stroke="#c9291f" stroke-width="2.6" opacity=".5"
+        d="M33 36 q-6 25 4 48 M67 36 q6 25-4 48"/>
+      <g fill="#4caf50">
+        <path d="M50 31 q-15-11-23-4 q11 11 23 4 z"/>
+        <path d="M50 31 q15-11 23-4 q-11 11-23 4 z"/>
+        <path d="M50 31 q-7-15-3-21 q9 8 3 21 z"/>
+        <path d="M50 31 q7-15 3-21 q-9 8-3 21 z"/>
+        <path d="M50 31 q-17 3-21 11 q15 2 21-11 z"/>
+        <path d="M50 31 q17 3 21 11 q-15 2-21-11 z"/>
+      </g>
+      <ellipse cx="34" cy="50" rx="8" ry="11" fill="#fff" opacity=".26" transform="rotate(-22 34 50)"/>
+    </symbol>
+
+    <symbol id="s-banana" viewBox="0 0 100 100">
+      <path fill="none" stroke="#ffd84d" stroke-width="24" stroke-linecap="round" d="M28 24 C28 62 54 84 80 76"/>
+      <path fill="none" stroke="#e8b52e" stroke-width="6" stroke-linecap="round" d="M35 30 C36 58 56 74 76 68"/>
+      <circle cx="28" cy="24" r="7" fill="#7a5c2a"/>
+    </symbol>
+
+    <symbol id="s-carrot" viewBox="0 0 100 100">
+      <path fill="#3faa4a" d="M50 44 q-6-20-20-26 q17 1 20 15 q3-14 20-15 q-14 6-20 26 z"/>
+      <path fill="#ff8c1a" d="M50 94 L33 46 q17-9 34 0 Z"/>
+      <path fill="none" stroke="#dd6f08" stroke-width="3.2" stroke-linecap="round"
+        d="M40 58 h9 M52 70 h9 M43 80 h9"/>
+    </symbol>
+
+    <symbol id="s-grapes" viewBox="0 0 100 100">
+      <path fill="none" stroke="#5a8f3a" stroke-width="5" stroke-linecap="round" d="M50 32 v-14"/>
+      <path fill="#3faa4a" d="M52 18 q16-10 22 0 q-14 8-22 0 z"/>
+      <circle cx="38" cy="41" r="11" fill="#9b5cc4"/>
+      <circle cx="62" cy="41" r="11" fill="#9b5cc4"/>
+      <circle cx="27" cy="57" r="11" fill="#8e4fbb"/>
+      <circle cx="50" cy="55" r="11" fill="#a86bd0"/>
+      <circle cx="73" cy="57" r="11" fill="#8e4fbb"/>
+      <circle cx="39" cy="72" r="11" fill="#9b5cc4"/>
+      <circle cx="61" cy="72" r="11" fill="#9b5cc4"/>
+      <circle cx="50" cy="87" r="10" fill="#8e4fbb"/>
+    </symbol>
+
+    <symbol id="s-strawberry" viewBox="0 0 100 100">
+      <path fill="#e63946" d="M50 94 C24 78 15 56 22 40 C31 33 41 38 50 38 C59 38 69 33 78 40 C85 56 76 78 50 94 Z"/>
+      <path fill="#3faa4a" d="M50 40 q-17 0-23-9 q11 3 15-4 q4 8 8 8 q4 0 8-8 q4 7 15 4 q-6 9-23 9 z"/>
+      <circle cx="38" cy="54" r="2.6" fill="#ffe08a"/>
+      <circle cx="55" cy="50" r="2.6" fill="#ffe08a"/>
+      <circle cx="46" cy="66" r="2.6" fill="#ffe08a"/>
+      <circle cx="63" cy="62" r="2.6" fill="#ffe08a"/>
+      <circle cx="34" cy="70" r="2.6" fill="#ffe08a"/>
+      <circle cx="53" cy="79" r="2.6" fill="#ffe08a"/>
+    </symbol>
+
+    <symbol id="s-bread" viewBox="0 0 100 100">
+      <path fill="#d1913f" d="M17 46 q0-24 33-24 q33 0 33 24 v36 q0 7-7 7 H24 q-7 0-7-7 z"/>
+      <path fill="#f7e0b0" d="M25 48 q0-18 25-18 q25 0 25 18 v32 q0 3-3 3 H28 q-3 0-3-3 z"/>
+      <circle cx="39" cy="56" r="2.8" fill="#e6ca94"/>
+      <circle cx="63" cy="52" r="2" fill="#e6ca94"/>
+      <circle cx="58" cy="63" r="2.4" fill="#e6ca94"/>
+      <circle cx="46" cy="71" r="2.6" fill="#e6ca94"/>
+    </symbol>
+
+    <symbol id="s-pasta" viewBox="0 0 100 100">
+      <g transform="translate(31 28) rotate(-22) scale(0.86)">
+        <path fill="#eccb7a" stroke="#d3a950" stroke-width="3" stroke-linejoin="round"
+          d="M-16 -11 L28 -11 L20 11 L-24 11 Z"/>
+        <path fill="none" stroke="#d0a94f" stroke-width="1.9" stroke-linecap="round"
+          d="M-14 -6.5 H24 M-16 -2 H22 M-18 2 H20 M-20 6.5 H18"/>
+        <ellipse cx="24" cy="0" rx="4.8" ry="11.6" fill="#faeab6"
+          transform="rotate(20 24 0)"/>
+        <ellipse cx="24" cy="0" rx="2.4" ry="8" fill="#b48c3c"
+          transform="rotate(20 24 0)"/>
+      </g>
+      <g transform="translate(69 42) rotate(30) scale(0.82)">
+        <path fill="#eccb7a" stroke="#d3a950" stroke-width="3" stroke-linejoin="round"
+          d="M-16 -11 L28 -11 L20 11 L-24 11 Z"/>
+        <path fill="none" stroke="#d0a94f" stroke-width="1.9" stroke-linecap="round"
+          d="M-14 -6.5 H24 M-16 -2 H22 M-18 2 H20 M-20 6.5 H18"/>
+        <ellipse cx="24" cy="0" rx="4.8" ry="11.6" fill="#faeab6"
+          transform="rotate(20 24 0)"/>
+        <ellipse cx="24" cy="0" rx="2.4" ry="8" fill="#b48c3c"
+          transform="rotate(20 24 0)"/>
+      </g>
+      <g transform="translate(32 58) rotate(12) scale(0.88)">
+        <path fill="#eccb7a" stroke="#d3a950" stroke-width="3" stroke-linejoin="round"
+          d="M-16 -11 L28 -11 L20 11 L-24 11 Z"/>
+        <path fill="none" stroke="#d0a94f" stroke-width="1.9" stroke-linecap="round"
+          d="M-14 -6.5 H24 M-16 -2 H22 M-18 2 H20 M-20 6.5 H18"/>
+        <ellipse cx="24" cy="0" rx="4.8" ry="11.6" fill="#faeab6"
+          transform="rotate(20 24 0)"/>
+        <ellipse cx="24" cy="0" rx="2.4" ry="8" fill="#b48c3c"
+          transform="rotate(20 24 0)"/>
+      </g>
+      <g transform="translate(62 74) rotate(-33) scale(0.84)">
+        <path fill="#eccb7a" stroke="#d3a950" stroke-width="3" stroke-linejoin="round"
+          d="M-16 -11 L28 -11 L20 11 L-24 11 Z"/>
+        <path fill="none" stroke="#d0a94f" stroke-width="1.9" stroke-linecap="round"
+          d="M-14 -6.5 H24 M-16 -2 H22 M-18 2 H20 M-20 6.5 H18"/>
+        <ellipse cx="24" cy="0" rx="4.8" ry="11.6" fill="#faeab6"
+          transform="rotate(20 24 0)"/>
+        <ellipse cx="24" cy="0" rx="2.4" ry="8" fill="#b48c3c"
+          transform="rotate(20 24 0)"/>
+      </g>
+    </symbol>
+
+    <symbol id="s-cheese" viewBox="0 0 100 100">
+      <path fill="#ffd75e" d="M8 70 L90 22 L90 30 L8 78 Z"/>
+      <path fill="#f0b81a" d="M8 78 L90 30 L90 78 Z"/>
+      <circle cx="70" cy="62" r="7" fill="#d99b10"/>
+      <circle cx="52" cy="68" r="5.5" fill="#d99b10"/>
+      <circle cx="79" cy="54" r="5" fill="#d99b10"/>
+      <circle cx="83" cy="68" r="4" fill="#d99b10"/>
+    </symbol>
+
+    <symbol id="s-broccoli" viewBox="0 0 100 100">
+      <rect x="42" y="56" width="16" height="38" rx="7" fill="#8ec07c"/>
+      <circle cx="32" cy="48" r="15" fill="#3d9e4a"/>
+      <circle cx="68" cy="48" r="15" fill="#3d9e4a"/>
+      <circle cx="50" cy="34" r="17" fill="#4ab857"/>
+      <circle cx="38" cy="58" r="13" fill="#45ad51"/>
+      <circle cx="62" cy="58" r="13" fill="#45ad51"/>
+    </symbol>
+
+    <symbol id="s-train" viewBox="0 0 100 100">
+      <rect x="6" y="44" width="46" height="30" rx="6" fill="#e63946"/>
+      <rect x="14" y="26" width="13" height="20" rx="4" fill="#c1121f"/>
+      <rect x="54" y="32" width="38" height="42" rx="7" fill="#c1121f"/>
+      <rect x="60" y="39" width="26" height="16" rx="4" fill="#cfeaff"/>
+      <rect x="12" y="50" width="14" height="12" rx="3" fill="#ffd9dd"/>
+      <rect x="32" y="50" width="14" height="12" rx="3" fill="#ffd9dd"/>
+      <rect x="2" y="72" width="96" height="7" rx="3.5" fill="#2e3440"/>
+      <circle cx="20" cy="84" r="9" fill="#37374d"/><circle cx="20" cy="84" r="3.5" fill="#c9ccd6"/>
+      <circle cx="46" cy="84" r="9" fill="#37374d"/><circle cx="46" cy="84" r="3.5" fill="#c9ccd6"/>
+      <circle cx="76" cy="84" r="9" fill="#37374d"/><circle cx="76" cy="84" r="3.5" fill="#c9ccd6"/>
+    </symbol>
+
+    <symbol id="s-bus" viewBox="0 0 100 100">
+      <rect x="5" y="32" width="90" height="44" rx="11" fill="#ffb703"/>
+      <rect x="12" y="40" width="17" height="15" rx="4" fill="#cfeaff"/>
+      <rect x="34" y="40" width="17" height="15" rx="4" fill="#cfeaff"/>
+      <rect x="56" y="40" width="17" height="15" rx="4" fill="#cfeaff"/>
+      <rect x="77" y="40" width="14" height="15" rx="4" fill="#e8f6ff"/>
+      <rect x="5" y="60" width="90" height="7" fill="#e69500"/>
+      <circle cx="27" cy="80" r="11" fill="#37374d"/><circle cx="27" cy="80" r="4.5" fill="#c9ccd6"/>
+      <circle cx="73" cy="80" r="11" fill="#37374d"/><circle cx="73" cy="80" r="4.5" fill="#c9ccd6"/>
+    </symbol>
+
+    <symbol id="s-bicycle" viewBox="0 0 100 100">
+      <circle cx="25" cy="66" r="20" fill="none" stroke="#2e3440" stroke-width="6"/>
+      <circle cx="75" cy="66" r="20" fill="none" stroke="#2e3440" stroke-width="6"/>
+      <path fill="none" stroke="#0a84ff" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"
+        d="M25 66 L45 38 L64 38 L75 66 M45 38 L52 66 L75 66"/>
+      <path fill="none" stroke="#2e3440" stroke-width="5" stroke-linecap="round" d="M64 36 L72 28 h9"/>
+      <path fill="#2e3440" d="M37 34 h16 l-4 6 h-13 z"/>
+      <circle cx="52" cy="66" r="5" fill="#2e3440"/>
+    </symbol>
+
+    <symbol id="s-circle" viewBox="0 0 100 100"><circle cx="50" cy="50" r="38" fill="#e63946"/></symbol>
+    <symbol id="s-square" viewBox="0 0 100 100"><rect x="13" y="13" width="74" height="74" rx="8" fill="#0a84ff"/></symbol>
+    <symbol id="s-triangle" viewBox="0 0 100 100"><path fill="#34c759" d="M50 11 L91 85 H9 Z"/></symbol>
+    <symbol id="s-star" viewBox="0 0 100 100">
+      <path fill="#ffd60a" d="M50 7 L62 37 L94 39 L69 60 L78 92 L50 74 L22 92 L31 60 L6 39 L38 37 Z"/>
+    </symbol>
+    <symbol id="s-heart" viewBox="0 0 100 100">
+      <path fill="#ff2d95" d="M50 89 C17 68 7 47 16 31 C25 17 43 19 50 33 C57 19 75 17 84 31 C93 47 83 68 50 89 Z"/>
+    </symbol>
+    <symbol id="s-diamond" viewBox="0 0 100 100"><path fill="#af52de" d="M50 7 L89 50 L50 93 L11 50 Z"/></symbol>
+    <symbol id="s-oval" viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="41" ry="26" fill="#ff9500"/></symbol>
+    <symbol id="s-rectangle" viewBox="0 0 100 100"><rect x="7" y="27" width="86" height="46" rx="7" fill="#00b8a9"/></symbol>
+    <symbol id="s-arrow" viewBox="0 0 100 100">
+      <path fill="#5856d6" d="M50 8 L88 47 L66 47 L66 91 L34 91 L34 47 L12 47 Z"/>
+    </symbol>
+
+    <!-- one ball, nine colours: the only card sprite that uses currentColor -->
+    <symbol id="s-ball" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="91" rx="26" ry="5" fill="#000" opacity=".1"/>
+      <circle cx="50" cy="50" r="36" fill="currentColor"/>
+      <ellipse cx="37" cy="35" rx="12" ry="8" fill="#fff" opacity=".42" transform="rotate(-28 37 35)"/>
+    </symbol>
+
+    <!-- turn every card over at once -->
+    <symbol id="s-flipall" viewBox="0 0 100 100">
+      <rect x="9" y="16" width="34" height="46" rx="7" fill="currentColor" opacity=".45"/>
+      <rect x="57" y="16" width="34" height="46" rx="7" fill="currentColor"/>
+      <circle cx="74" cy="30" r="4" fill="#fff" opacity=".75"/>
+      <circle cx="74" cy="48" r="4" fill="#fff" opacity=".75"/>
+      <path fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" d="M24 80 h52"/>
+      <path fill="currentColor" d="M76 71 L94 80 L76 89 Z"/>
+      <path fill="currentColor" d="M24 71 L6 80 L24 89 Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============================== app ================================= -->
+<div id="app">
+
+  <div id="stage">
+    <!-- one backdrop, shared by both games -->
+    <div id="backdrop" aria-hidden="true">
+      <div class="deco deco-sky">
+        <div id="sun"></div>
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+        <div class="cloud c3"></div>
+        <div class="cloud c4"></div>
+        <div id="ground"></div>
+      </div>
+      <div class="deco deco-night">
+        <div id="moon"></div>
+        <div class="stars"></div>
+        <div class="nground"></div>
+      </div>
+      <div class="deco deco-sea">
+        <div class="bubbles"></div>
+        <div class="sand"></div>
+      </div>
+      <div class="deco deco-island">
+        <div class="ocean"><div class="waves"></div></div>
+        <svg class="isle" viewBox="0 0 240 190">
+          <ellipse cx="120" cy="178" rx="112" ry="15" fill="#9fe8f0" opacity=".5"/>
+          <path fill="#f5e3b3" d="M22 176 Q52 150 120 150 Q188 150 218 176 Z"/>
+          <path fill="#dcc07a" opacity=".55" d="M22 176 Q52 168 120 168 Q188 168 218 176 Z"/>
+          <path fill="none" stroke="#8a5a2b" stroke-width="10" stroke-linecap="round"
+            d="M108 154 C104 126 112 100 134 84"/>
+          <circle cx="125" cy="94" r="6" fill="#6b4423"/>
+          <circle cx="140" cy="99" r="5" fill="#6b4423"/>
+          <g transform="translate(134 84)">
+            <g transform="rotate(-172)"><path fill="#2f9e44" d="M0 0 C26 -13 56 -12 80 -2 C56 11 26 11 0 0 Z"/></g>
+            <g transform="rotate(-128)"><path fill="#40c057" d="M0 0 C26 -13 56 -12 80 -2 C56 11 26 11 0 0 Z"/></g>
+            <g transform="rotate(-86)"><path fill="#2f9e44" d="M0 0 C24 -12 52 -11 74 -2 C52 10 24 10 0 0 Z"/></g>
+            <g transform="rotate(-44)"><path fill="#40c057" d="M0 0 C26 -13 56 -12 80 -2 C56 11 26 11 0 0 Z"/></g>
+            <g transform="rotate(-4)"><path fill="#2f9e44" d="M0 0 C26 -13 56 -12 80 -2 C56 11 26 11 0 0 Z"/></g>
+            <g transform="rotate(34)"><path fill="#37b24d" d="M0 0 C24 -12 50 -11 70 -2 C50 10 24 10 0 0 Z"/></g>
+          </g>
+        </svg>
+      </div>
+      <div class="deco deco-paper"><div class="dots"></div></div>
+    </div>
+
+    <div id="board" role="group" aria-label="cards"></div>
+    <div id="catpick" role="group" aria-label="pick a group"></div>
+
+    <!-- lives on the canvas, top-right, not down in the bar -->
+    <button id="flipBtn" class="ctl" type="button" aria-label="turn every card over (hold)">
+      <svg class="ring" viewBox="0 0 100 100"><circle class="ring-fg" cx="50" cy="50" r="44"/></svg>
+      <svg class="glyph" viewBox="0 0 100 100"><use href="#s-flipall" xlink:href="#s-flipall"/></svg>
+    </button>
+
+    <canvas id="ink" aria-hidden="true"></canvas>
+    <canvas id="magic" aria-hidden="true"></canvas>
+    <div id="stickers"></div>
+    <div id="objects"></div>
+    <div id="balloons"></div>
+    <div id="picLayer" role="img"></div>
+    <canvas id="cover" aria-hidden="true"></canvas>
+
+    <div id="hint" aria-hidden="true">
+      <svg viewBox="0 0 200 200">
+        <circle class="ripple r1" cx="94" cy="104" r="42"/>
+        <circle class="ripple r2" cx="94" cy="104" r="42"/>
+        <g class="finger" fill="#fff">
+          <circle cx="104" cy="105" r="13"/>
+          <circle cx="125" cy="110" r="11"/>
+          <rect x="66" y="103" width="72" height="63" rx="26"/>
+          <rect x="50" y="121" width="37" height="24" rx="12"/>
+          <rect x="68" y="42" width="27" height="70" rx="13.5"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <div id="rail" role="group" aria-label="colours"></div>
+
+  <div id="bar">
+    <div id="playTools" class="toolrow" role="group" aria-label="things"></div>
+    <div id="drawTools" class="toolrow" role="group" aria-label="drawing tools"></div>
+    <div id="cardTools" class="toolrow" role="group" aria-label="groups"></div>
+    <div id="controls">
+      <button id="playBtn" class="ctl" type="button" aria-label="play">
+        <svg class="glyph glyph-play" viewBox="0 0 100 100"><use href="#s-play" xlink:href="#s-play"/></svg>
+        <svg class="glyph glyph-pause" viewBox="0 0 100 100"><use href="#s-pause" xlink:href="#s-pause"/></svg>
+      </button>
+      <button id="settingsBtn" class="ctl ctl-small" type="button" aria-label="settings (hold)">
+        <svg class="ring" viewBox="0 0 100 100"><circle class="ring-fg" cx="50" cy="50" r="44"/></svg>
+        <svg class="glyph" viewBox="0 0 100 100"><use href="#s-settings" xlink:href="#s-settings"/></svg>
+      </button>
+      <button id="resetBtn" class="ctl" type="button" aria-label="clear everything (hold)">
+        <svg class="ring" viewBox="0 0 100 100"><circle class="ring-fg" cx="50" cy="50" r="44"/></svg>
+        <svg class="glyph glyph-reset" viewBox="0 0 100 100"><use href="#s-reset" xlink:href="#s-reset"/></svg>
+        <svg class="glyph glyph-undo" viewBox="0 0 100 100"><use href="#s-undo" xlink:href="#s-undo"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================ popovers ============================== -->
+<div id="scrim"></div>
+
+<div id="tray" class="popover" role="group" aria-label="stickers"></div>
+
+<div id="settings" class="popover" role="group" aria-label="settings">
+  <div id="bgtiles" role="group" aria-label="background"></div>
+  <div class="settings-row">
+    <button id="muteBtn" class="bigbtn" type="button" aria-label="sound on">
+      <svg class="glyph glyph-sound" viewBox="0 0 100 100"><use href="#s-sound" xlink:href="#s-sound"/></svg>
+      <svg class="glyph glyph-muted" viewBox="0 0 100 100"><use href="#s-muted" xlink:href="#s-muted"/></svg>
+    </button>
+    <button id="homeBtn" class="bigbtn" type="button" aria-label="choose a game">
+      <svg class="glyph" viewBox="0 0 100 100"><use href="#s-home" xlink:href="#s-home"/></svg>
+    </button>
+    <button id="closeBtn" class="bigbtn" type="button" aria-label="close">
+      <svg class="glyph" viewBox="0 0 100 100"><use href="#s-close" xlink:href="#s-close"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ========================== game chooser =========================== -->
+<div id="home">
+  <div id="cards">
+    <button class="gamecard" type="button" data-game="play" aria-label="flying things">
+      <svg class="card-art" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="cardsky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5fc0f0"/><stop offset="1" stop-color="#d9f3ff"/>
+          </linearGradient>
+        </defs>
+        <rect width="300" height="200" fill="url(#cardsky)"/>
+        <circle cx="46" cy="42" r="26" fill="#ffd60a"/>
+        <ellipse cx="215" cy="52" rx="46" ry="16" fill="#fff" opacity=".85"/>
+        <ellipse cx="92" cy="118" rx="38" ry="13" fill="#fff" opacity=".7"/>
+        <path fill="#4aa832" d="M-6 168 Q150 146 306 168 L306 200 L-6 200 Z"/>
+        <g transform="translate(150 86) scale(1.15) translate(-50 -50)">
+          <path fill="#ff3b30" d="M95 50 L62 41 L52 12 L42 12 L44 43 L19 45 L11 27 L3 30 L7 47
+            L7 53 L3 70 L11 73 L19 55 L44 57 L42 88 L52 88 L62 59 Z"/>
+          <circle cx="76" cy="50" r="5.5" fill="#fff" opacity=".9"/>
+        </g>
+        <g transform="translate(246 128) scale(.62) translate(-50 -50)">
+          <path fill="#ff2d95" d="M50 3 C73 3 88 21 88 41 C88 58 66 72 50 82 C34 72 12 58 12 41
+            C12 21 27 3 50 3 Z"/>
+          <rect x="40" y="85" width="20" height="13" rx="4" fill="#8b5a2b"/>
+        </g>
+      </svg>
+    </button>
+
+    <button class="gamecard" type="button" data-game="draw" aria-label="drawing">
+      <svg class="card-art" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="300" height="200" fill="#fdf8ec"/>
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="#0a84ff" stroke-width="16" d="M32 150 C64 76 96 176 132 96"/>
+          <path stroke="#ff3b30" stroke-width="14" d="M136 60 C176 34 190 92 224 58"/>
+          <path stroke="#34c759" stroke-width="12" d="M168 150 C196 116 226 168 264 128"/>
+          <path stroke="#ffd60a" stroke-width="10" d="M44 44 C70 26 84 58 106 38"/>
+        </g>
+        <g transform="translate(238 148) rotate(-30) scale(.8) translate(-50 -50)">
+          <path fill="#af52de" d="M50 10 L63 34 H37 Z"/>
+          <rect x="37" y="32" width="26" height="58" rx="7" fill="#af52de"/>
+          <rect x="35" y="46" width="30" height="9" fill="#fff" opacity=".6"/>
+        </g>
+      </svg>
+    </button>
+
+    <button class="gamecard" type="button" data-game="cards" aria-label="picture cards">
+      <svg class="card-art" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="300" height="200" fill="#efe6ff"/>
+        <!-- a mini 3x3 board, four of the nine turned over -->
+        <rect x="65" y="15" width="52" height="52" rx="11" fill="#fff"/>
+        <circle cx="91" cy="41" r="16" fill="#e63946"/>
+        <rect x="124" y="15" width="52" height="52" rx="11" fill="#6c5ce7"/>
+        <circle cx="139" cy="30" r="4" fill="#fff" opacity=".5"/>
+        <circle cx="161" cy="52" r="4" fill="#fff" opacity=".5"/>
+        <rect x="183" y="15" width="52" height="52" rx="11" fill="#fff"/>
+        <path fill="#ffd60a" d="M209 24 L214 36 L227 37 L217 45 L221 59 L209 51 L197 59 L201 45 L191 37 L204 36 Z"/>
+        <rect x="65" y="74" width="52" height="52" rx="11" fill="#6c5ce7"/>
+        <circle cx="80" cy="89" r="4" fill="#fff" opacity=".5"/>
+        <circle cx="102" cy="111" r="4" fill="#fff" opacity=".5"/>
+        <rect x="124" y="74" width="52" height="52" rx="11" fill="#fff"/>
+        <path fill="#ff2d95" d="M150 116 C136 107 132 98 136 91 C140 85 148 86 150 92 C152 86 160 85 164 91 C168 98 164 107 150 116 Z"/>
+        <rect x="183" y="74" width="52" height="52" rx="11" fill="#6c5ce7"/>
+        <circle cx="198" cy="89" r="4" fill="#fff" opacity=".5"/>
+        <circle cx="220" cy="111" r="4" fill="#fff" opacity=".5"/>
+        <rect x="65" y="133" width="52" height="52" rx="11" fill="#fff"/>
+        <path fill="#34c759" d="M91 143 L108 175 H74 Z"/>
+        <rect x="124" y="133" width="52" height="52" rx="11" fill="#6c5ce7"/>
+        <circle cx="139" cy="148" r="4" fill="#fff" opacity=".5"/>
+        <circle cx="161" cy="170" r="4" fill="#fff" opacity=".5"/>
+        <rect x="183" y="133" width="52" height="52" rx="11" fill="#fff"/>
+        <rect x="193" y="143" width="32" height="32" rx="6" fill="#0a84ff"/>
+      </svg>
+    </button>
+
+    <button class="gamecard" type="button" data-game="pop" aria-label="pop the balloons">
+      <svg class="card-art" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="popsky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5fc0f0"/><stop offset="1" stop-color="#d9f3ff"/>
+          </linearGradient>
+        </defs>
+        <rect width="300" height="200" fill="url(#popsky)"/>
+        <g transform="translate(66 118) scale(.92) translate(-50 -50)">
+          <path fill="#0a84ff" d="M50 3 C73 3 88 21 88 41 C88 58 66 72 50 82 C34 72 12 58 12 41
+            C12 21 27 3 50 3 Z"/>
+          <rect x="40" y="85" width="20" height="13" rx="4" fill="#8b5a2b"/>
+        </g>
+        <g transform="translate(232 132) scale(.78) translate(-50 -50)">
+          <path fill="#34c759" d="M50 3 C73 3 88 21 88 41 C88 58 66 72 50 82 C34 72 12 58 12 41
+            C12 21 27 3 50 3 Z"/>
+          <rect x="40" y="85" width="20" height="13" rx="4" fill="#8b5a2b"/>
+        </g>
+        <g transform="translate(150 74) scale(.7) translate(-50 -50)">
+          <path fill="#ff2d95" d="M50 3 C73 3 88 21 88 41 C88 58 66 72 50 82 C34 72 12 58 12 41
+            C12 21 27 3 50 3 Z"/>
+        </g>
+        <g fill="#ffd60a">
+          <rect x="146" y="16" width="13" height="13" rx="3" transform="rotate(24 152 22)"/>
+          <rect x="112" y="40" width="11" height="11" rx="3" transform="rotate(-32 117 45)"/>
+          <rect x="186" y="34" width="12" height="12" rx="3" transform="rotate(48 192 40)"/>
+          <rect x="122" y="12" width="10" height="10" rx="3" fill="#ff2d95"/>
+          <rect x="196" y="66" width="10" height="10" rx="3" fill="#ff2d95"/>
+          <rect x="104" y="70" width="9" height="9" rx="3" fill="#0a84ff"/>
+        </g>
+      </svg>
+    </button>
+
+    <button class="gamecard" type="button" data-game="scratch" aria-label="scratch to find the picture">
+      <svg class="card-art" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="scratchcover" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#cdb4f6"/><stop offset="1" stop-color="#5a189a"/>
+          </linearGradient>
+          <mask id="scratched">
+            <rect width="300" height="200" fill="#fff"/>
+            <g stroke="#000" stroke-width="104" stroke-linecap="round" fill="none">
+              <path d="M26 74 C104 26 198 156 278 104"/>
+            </g>
+          </mask>
+        </defs>
+        <rect width="300" height="200" fill="#fdf8ec"/>
+        <rect x="86" y="24" width="128" height="152" rx="18" fill="#fff"/>
+        <g transform="translate(150 100) scale(1.28) translate(-50 -50)">
+          <ellipse cx="19" cy="46" rx="11" ry="20" fill="#8f5a2a"/>
+          <ellipse cx="81" cy="46" rx="11" ry="20" fill="#8f5a2a"/>
+          <circle cx="50" cy="54" r="30" fill="#b9793a"/>
+          <ellipse cx="50" cy="68" rx="17" ry="13" fill="#f0dcc0"/>
+          <ellipse cx="50" cy="62" rx="7" ry="5" fill="#3a2a20"/>
+          <circle cx="39" cy="46" r="4.5" fill="#3a2a20"/>
+          <circle cx="61" cy="46" r="4.5" fill="#3a2a20"/>
+        </g>
+        <rect width="300" height="200" fill="url(#scratchcover)" mask="url(#scratched)"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script src="core.js"></script>
+<script src="play.js"></script>
+<script src="draw.js"></script>
+<script src="cards.js"></script>
+<script src="pop.js"></script>
+<script src="scratch.js"></script>
+</body>
+</html>

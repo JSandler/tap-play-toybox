@@ -1,0 +1,956 @@
+/* ==========================================================================
+   Play! — a game chooser plus two games (flying things, drawing) that share
+   one backdrop, one colour rail and one settings panel.
+
+   Layout is a 3-cell grid: stage, colour rail, bottom bar. Every size is
+   clamp()ed against the viewport so the toolbar fits iPad portrait (768pt)
+   and landscape (1024pt) without any touch target dropping below ~54px.
+   ========================================================================== */
+
+:root {
+  --btn:    clamp(54px, 8.6vw, 88px);      /* tool / shape buttons     */
+  --big:    clamp(62px, 10vw, 104px);      /* play + reset circles     */
+  --small:  calc(var(--big) * 0.62);       /* settings: grown-ups only */
+  --sw:     clamp(38px, 5.6vh, 56px);      /* colour swatches          */
+  --obj:    clamp(88px, 13.5vmin, 132px);  /* placed objects/stickers  */
+  --bar-h:  calc(var(--big) + 34px);
+  --rail-w: calc(var(--sw) * 1.25 + 20px);
+  --flip-inset: clamp(8px, 1.5vmin, 18px);   /* corner button's offset */
+  --chrome: rgba(26, 30, 58, .78);
+  --panel:  #20264d;
+  --pick:   #ffd60a;                       /* selection ring           */
+}
+
+/* ======================== background presets =============================
+   Set on <body> for the live backdrop and on each settings tile for its
+   preview, so a background is defined in exactly one place. */
+
+[data-bg="sky"] {
+  --bg1: #5fc0f0; --bg2: #8fd9ff; --bg3: #d6f2ff;
+  --gnd1: #4aa832; --gnd2: #7ed957;
+  --cloud: #fff; --cloud-op: .85;
+  --sun1: #fff6c2; --sun2: #ffd60a; --sun3: #ffb703;
+  --sun-top: 4%; --sun-left: 4%; --sun-size: 15vmin; --sun-glow: .55;
+}
+[data-bg="white"] {
+  --bg1: #fff; --bg2: #fff; --bg3: #fff;
+}
+[data-bg="paper"] {
+  --bg1: #fdf9ee; --bg2: #fbf5e6; --bg3: #f4ecd8;
+  --dot: rgba(150, 128, 86, .3);
+}
+[data-bg="night"] {
+  --bg1: #0b0e2a; --bg2: #1a2159; --bg3: #37437f;
+  --gnd1: #0d1526; --gnd2: #1d2c47;
+}
+[data-bg="sea"] {
+  --bg1: #01466c; --bg2: #0f86b0; --bg3: #6fd6d8;
+  --sand1: #ecdca6; --sand2: #c9ab6b;
+}
+[data-bg="island"] {
+  --bg1: #46a6e2; --bg2: #8ed6f2; --bg3: #d3f0ff;
+  --cloud: #fff; --cloud-op: .85;
+  --sun1: #fff6c2; --sun2: #ffd60a; --sun3: #ffb703;
+  --sun-top: 7%; --sun-left: 68%; --sun-size: 14vmin; --sun-glow: .5;
+  --sea1: #74d3e8; --sea2: #1d82ba; --sea3: #0c5382;
+  --sand1: #f5e3b3; --sand2: #dcc07a;
+}
+[data-bg="sunset"] {
+  --bg1: #3a1d5c; --bg2: #ff6f6f; --bg3: #ffd489;
+  --gnd1: #35244c; --gnd2: #6d4a70;
+  --cloud: #ffc0cd; --cloud-op: .72;
+  --sun1: #fff3c4; --sun2: #ff9e3d; --sun3: #ff5e5e;
+  --sun-top: 56%; --sun-left: 58%; --sun-size: 26vmin; --sun-glow: .7;
+}
+
+/* ============================== base ==================================== */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #17559a;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* nothing here is text to select or a link to long-press */
+body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#sprites { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  position: relative;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr var(--rail-w);
+  grid-template-rows: 1fr var(--bar-h);
+  grid-template-areas: "stage rail" "bar bar";
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: #1a1e3a;
+  touch-action: none;
+}
+body[data-screen="home"] #app { display: none; }
+
+/* ============================== stage =================================== */
+
+#stage {
+  grid-area: stage;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(var(--bg1), var(--bg2) 45%, var(--bg3));
+}
+
+.deco { position: absolute; inset: 0; display: none; }
+[data-bg="sky"]    .deco-sky,
+[data-bg="sunset"] .deco-sky,
+[data-bg="island"] .deco-sky   { display: block; }
+[data-bg="island"] .deco-island { display: block; }
+[data-bg="island"] #ground      { display: none; }
+[data-bg="night"]  .deco-night { display: block; }
+[data-bg="sea"]    .deco-sea   { display: block; }
+[data-bg="paper"]  .deco-paper { display: block; }
+
+/* --- daylight / sunset --- */
+#sun {
+  position: absolute;
+  top: var(--sun-top); left: var(--sun-left);
+  width: var(--sun-size); height: var(--sun-size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, var(--sun1), var(--sun2) 60%, var(--sun3));
+  box-shadow: 0 0 8vmin rgba(255, 214, 10, var(--sun-glow));
+  animation: sunpulse 6s ease-in-out infinite;
+}
+@keyframes sunpulse { 50% { transform: scale(1.06); } }
+
+.cloud {
+  position: absolute;
+  height: 7vmin;
+  width: 20vmin;
+  background: var(--cloud);
+  opacity: var(--cloud-op);
+  border-radius: 50%;
+  filter: blur(.2vmin);
+}
+.cloud::before, .cloud::after {
+  content: "";
+  position: absolute;
+  background: var(--cloud);
+  border-radius: 50%;
+}
+.cloud::before { width: 55%; height: 145%; left: 12%; top: -60%; }
+.cloud::after  { width: 42%; height: 115%; right: 14%; top: -40%; }
+
+.c1 { top: 12%; animation: drift 46s linear infinite; }
+.c2 { top: 30%; transform: scale(.7);  animation: drift 63s linear infinite -18s; }
+.c3 { top: 50%; transform: scale(1.25); animation: drift 78s linear infinite -40s; }
+.c4 { top: 66%; transform: scale(.55); animation: drift 55s linear infinite -30s; }
+@keyframes drift { from { left: -25vmin; } to { left: 105%; } }
+
+#ground, .nground, .sand {
+  position: absolute;
+  left: -2%; right: -2%; bottom: 0;
+  border-radius: 50% 50% 0 0 / 18% 18% 0 0;
+}
+#ground  { height: 11%; background: linear-gradient(var(--gnd2), var(--gnd1)); }
+.nground { height: 11%; background: linear-gradient(var(--gnd2), var(--gnd1)); }
+.sand    { height: 12%; background: linear-gradient(var(--sand1), var(--sand2)); }
+
+/* --- night --- */
+#moon {
+  position: absolute;
+  top: 6%; right: 8%;
+  width: 12vmin; height: 12vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 36%, #fffdf0, #ffeeb0 68%, #f3d878);
+  box-shadow: 0 0 7vmin rgba(255, 240, 180, .38);
+}
+.stars { position: absolute; inset: 0; }
+.star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle linear infinite;
+}
+@keyframes twinkle { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+
+/* --- under the sea --- */
+.bubbles { position: absolute; inset: 0; overflow: hidden; }
+.bubble {
+  position: absolute;
+  bottom: -14%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .5);
+  background: rgba(255, 255, 255, .12);
+  animation: rise linear infinite;
+}
+@keyframes rise {
+  from { transform: translateY(0) translateX(0); opacity: 0; }
+  12%  { opacity: 1; }
+  to   { transform: translateY(-1150px) translateX(3vmin); opacity: 0; }
+}
+
+/* --- a small island --- */
+.ocean {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 38%;
+  overflow: hidden;
+  background: linear-gradient(var(--sea1), var(--sea2) 45%, var(--sea3));
+}
+.ocean::before {                      /* light on the water at the horizon */
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 14%;
+  background: linear-gradient(rgba(255, 255, 255, .5), transparent);
+}
+.waves { position: absolute; inset: 0; }
+.wave {
+  position: absolute;
+  height: .55vmin;
+  border-radius: .5vmin;
+  background: rgba(255, 255, 255, .55);
+  animation: swell linear infinite;
+}
+@keyframes swell {
+  from { transform: translateX(-5vmin); opacity: 0; }
+  25%  { opacity: 1; }
+  75%  { opacity: 1; }
+  to   { transform: translateX(5vmin); opacity: 0; }
+}
+.isle {
+  position: absolute;
+  left: 6%;
+  bottom: 22%;
+  width: 42vmin;
+  height: auto;
+  overflow: visible;
+}
+
+/* --- paper --- */
+.dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--dot) 1.7px, transparent 1.8px);
+  background-size: 26px 26px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud, #sun, .star, .bubble, .wave { animation: none; }
+}
+
+/* ------------------------------- hint ---------------------------------- */
+
+#hint {
+  position: absolute;
+  left: 50%; top: 45%;
+  width: 34vmin; height: 34vmin;
+  transform: translate(-50%, -50%);
+  pointer-events: none;              /* taps go straight through */
+  opacity: .9;
+  transition: opacity .3s, transform .3s;
+  z-index: 4;
+}
+#hint.gone { opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+#hint svg { width: 100%; height: 100%; overflow: visible; }
+#hint .ripple {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 7;
+  transform-box: view-box;
+  transform-origin: 94px 104px;
+}
+#hint .r1 { animation: ripple 2.1s ease-out infinite; }
+#hint .r2 { animation: ripple 2.1s ease-out infinite -1.05s; }
+@keyframes ripple {
+  from { transform: scale(.55); opacity: .9; }
+  to   { transform: scale(1.9); opacity: 0; }
+}
+#hint .finger {
+  transform-box: view-box;
+  transform-origin: 94px 162px;
+  filter: drop-shadow(0 3px 6px rgba(20, 60, 90, .3));
+  animation: tap 2.1s ease-in-out infinite;
+}
+@keyframes tap {
+  0%, 100% { transform: translateY(0) scale(1); }
+  22%      { transform: translateY(14px) scale(.94); }
+  44%      { transform: translateY(0) scale(1); }
+}
+/* on a light background the white hand needs a darker cue */
+[data-bg="white"] #hint .finger,
+[data-bg="paper"] #hint .finger { fill: #b9c6d4; }
+[data-bg="white"] #hint .ripple,
+[data-bg="paper"] #hint .ripple { stroke: #cbd6e2; }
+
+/* =========================== drawing surface ============================ */
+
+#ink, #magic {
+  position: absolute;
+  left: 0; top: 0;
+  pointer-events: none;
+}
+#ink   { z-index: 1; }
+#magic { z-index: 2; }
+
+#stickers, #objects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;              /* only the pieces themselves are hit */
+  z-index: 3;
+}
+#objects .obj { pointer-events: auto; }
+body[data-tool="sticker"] #stickers .obj { pointer-events: auto; }
+
+/* ============================== pieces ================================== */
+
+.obj {
+  position: absolute;
+  left: 0; top: 0;
+  width: var(--obj);
+  height: var(--obj);
+  will-change: transform;
+  touch-action: none;
+}
+.obj-pop { width: 100%; height: 100%; transition: transform .13s ease-out; }
+.obj-pop.grabbed { transform: scale(1.16); }
+
+.obj svg {
+  display: block;
+  width: 100%; height: 100%;
+  overflow: visible;
+  pointer-events: none;              /* the whole square box is the target */
+}
+
+@keyframes popin {
+  0%   { transform: scale(0); }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.obj-pop.popin { animation: popin .34s cubic-bezier(.3, 1.4, .5, 1); }
+
+@keyframes leave { to { transform: scale(0); opacity: 0; } }
+.obj.leaving .obj-pop { animation: leave .3s ease-in forwards; }
+
+/* Moving sprite parts. These live in real inline SVG, not <use>, precisely
+   because document CSS cannot reach into a <use> shadow tree. */
+.rotor, .tailrotor, .flame { transform-box: view-box; }
+.rotor     { transform-origin: 59px 27px; animation: blur-spin .34s linear infinite; }
+.tailrotor { transform-origin: 13px 38px; animation: blur-spin .19s linear infinite; }
+@keyframes blur-spin { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.12); } }
+.flame {
+  transform-origin: 22px 50px;
+  animation: flicker .17s steps(2, jump-none) infinite alternate;
+}
+@keyframes flicker { to { transform: scaleX(.62) scaleY(.86); } }
+
+/* ============================ colour rail =============================== */
+
+#rail {
+  grid-area: rail;
+  background: var(--chrome);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1.2vh, 14px);
+}
+
+.sw {
+  flex: 0 0 auto;
+  width: var(--sw);
+  height: var(--sw);
+  border-radius: 50%;
+  box-shadow: inset 0 -.28em .5em rgba(0, 0, 0, .22);
+  transition: transform .15s, box-shadow .15s;
+}
+.sw[aria-pressed="true"] {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 5px var(--pick), inset 0 -.28em .5em rgba(0, 0, 0, .22);
+}
+.sw.rainbow {
+  background: conic-gradient(#ff3b30, #ff9500, #ffd60a, #34c759,
+                             #0a84ff, #af52de, #ff2d95, #ff3b30);
+}
+
+/* ============================ bottom bar ================================ */
+
+#bar {
+  grid-area: bar;
+  background: var(--chrome);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 clamp(14px, 1.9vw, 26px);
+}
+
+.toolrow, #controls {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1vw, 14px);
+}
+#controls { margin-left: auto; }
+
+/* Hide every tool row and game-specific button, then reveal just the active
+   screen's. Listing each screen/element pair does not scale past a few games. */
+.toolrow { display: none; }
+body[data-screen="play"]  #playTools,
+body[data-screen="draw"]  #drawTools,
+body[data-screen="cards"] #cardTools { display: flex; }
+
+#playBtn { display: none; }
+body[data-screen="play"] #playBtn { display: grid; }
+
+/* The flip-everything button belongs to the card game alone, and it floats in
+   the top-right of the canvas rather than sitting in the bar. Below the group
+   chooser's z-index so the chooser covers it while a group is being picked. */
+#flipBtn { display: none; }
+body[data-screen="cards"] #flipBtn {
+  display: grid;
+  position: absolute;
+  top: var(--flip-inset);
+  right: var(--flip-inset);
+  z-index: 5;
+}
+
+/* The card, balloon and scratch games have nothing to colour, so the rail
+   steps aside and the canvas takes the whole width. None of them wants the
+   tap-here hand either. */
+body[data-screen="cards"] #app,
+body[data-screen="pop"] #app,
+body[data-screen="scratch"] #app { grid-template-columns: 1fr 0; }
+body[data-screen="cards"] #rail,
+body[data-screen="pop"] #rail,
+body[data-screen="scratch"] #rail,
+body[data-screen="cards"] #hint,
+body[data-screen="pop"] #hint,
+body[data-screen="scratch"] #hint { display: none; }
+
+/* Each game owns its own layers. All of them are hidden and the active screen
+   reveals only its own; the rest stay in the DOM with their state intact, so
+   switching back and forth loses nothing. */
+#objects, #ink, #magic, #stickers, #board, #catpick,
+#balloons, #picLayer, #cover { display: none; }
+
+body[data-screen="play"]    #objects  { display: block; }
+body[data-screen="draw"]    #ink,
+body[data-screen="draw"]    #magic,
+body[data-screen="draw"]    #stickers { display: block; }
+body[data-screen="pop"]     #balloons { display: block; }
+body[data-screen="scratch"] #picLayer { display: grid; }
+body[data-screen="scratch"] #cover    { display: block; }
+
+.toolbtn {
+  color: var(--ink, #ff3b30);
+  width: var(--btn);
+  height: var(--btn);
+  border-radius: 26%;
+  background: rgba(255, 255, 255, .58);
+  display: grid;
+  place-items: center;
+  transition: transform .15s, background .15s, box-shadow .15s;
+}
+.toolbtn svg { width: 86%; height: 86%; overflow: visible; }
+.toolbtn[aria-pressed="true"] {
+  background: #fff;
+  box-shadow: 0 0 0 5px var(--pick);
+  transform: translateY(-7px) scale(1.05);
+}
+.toolbtn:active { transform: scale(.94); }
+.toolbtn[aria-pressed="true"]:active { transform: translateY(-7px) scale(1); }
+
+/* the sticker button opens a tray, so it gets a little caret */
+.sticker-btn::after {
+  content: "";
+  position: absolute;
+  right: 6px; bottom: 5px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid rgba(30, 34, 66, .6);
+}
+
+/* when the rainbow swatch is picked, the icons cycle hue so the child can see
+   that the colour is going to be a surprise */
+body.rainbow .toolbtn svg { animation: huecycle 5s linear infinite; }
+@keyframes huecycle { to { filter: hue-rotate(360deg); } }
+
+/* --- big round toy buttons --- */
+.ctl {
+  width: var(--big);
+  height: var(--big);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  transition: transform .1s, box-shadow .1s, background .2s;
+}
+.ctl-small { width: var(--small); height: var(--small); }
+.glyph {
+  width: 56%;
+  height: 56%;
+  position: absolute;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .25));
+}
+
+#playBtn {
+  background: linear-gradient(#6ee87a, #16b535);
+  box-shadow: 0 6px 0 #0d8526, 0 10px 22px rgba(0, 0, 0, .32);
+}
+body.playing #playBtn {
+  background: linear-gradient(#ffd76e, #f5a300);
+  box-shadow: 0 6px 0 #b87500, 0 10px 22px rgba(0, 0, 0, .32);
+}
+#settingsBtn {
+  background: linear-gradient(#8b93b8, #4d5580);
+  box-shadow: 0 5px 0 #2f3557, 0 8px 16px rgba(0, 0, 0, .3);
+}
+#resetBtn {
+  background: linear-gradient(#ff9a6c, #f0392b);
+  box-shadow: 0 6px 0 #b01f16, 0 10px 22px rgba(0, 0, 0, .32);
+}
+#resetBtn.undo {
+  background: linear-gradient(#8fd4ff, #0a84ff);
+  box-shadow: 0 6px 0 #0059b3, 0 10px 22px rgba(0, 0, 0, .32);
+}
+.ctl:active {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .35), 0 4px 10px rgba(0, 0, 0, .28);
+}
+
+.glyph-pause, body.playing .glyph-play { display: none; }
+body.playing .glyph-pause { display: block; }
+.glyph-undo, #resetBtn.undo .glyph-reset { display: none; }
+#resetBtn.undo .glyph-undo { display: block; }
+
+/* press-and-hold progress ring, on both reset and settings */
+.ring {
+  position: absolute;
+  display: block;
+  left: -9px;
+  top: -9px;
+  width: calc(100% + 18px);
+  height: calc(100% + 18px);
+  overflow: visible;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.ring-fg {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 276.5;            /* 2 * pi * r, r = 44 */
+  stroke-dashoffset: 276.5;
+  opacity: 0;
+  transition: stroke-dashoffset .18s ease-out, opacity .18s;
+}
+.holding .ring-fg {
+  stroke-dashoffset: 0;
+  opacity: 1;
+  transition: stroke-dashoffset 900ms linear, opacity .1s;
+}
+
+/* ============================= popovers ================================= */
+
+#scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  background: rgba(8, 12, 28, .5);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+body.panel #scrim { display: block; }
+
+.popover {
+  position: fixed;
+  z-index: 60;
+  display: none;
+  background: var(--panel);
+  border-radius: 30px;
+  padding: clamp(12px, 1.8vw, 22px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+}
+body.panel-tray #tray { display: flex; gap: clamp(6px, 1vw, 14px); }
+body.panel-settings #settings { display: block; }
+
+#tray {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bar-h) + 18px);
+}
+
+#settings {
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+}
+#bgtiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(8px, 1.4vw, 16px);
+}
+.bgtile {
+  width: clamp(76px, 12vw, 118px);
+  height: clamp(52px, 8vw, 80px);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(var(--bg1), var(--bg2) 45%, var(--bg3));
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .16);
+  transition: transform .15s, box-shadow .15s;
+}
+.bgtile[aria-pressed="true"] {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 5px var(--pick), inset 0 0 0 2px rgba(0, 0, 0, .16);
+}
+/* miniature versions of each backdrop's furniture */
+.bgtile[data-bg="sky"]::before, .bgtile[data-bg="sunset"]::before {
+  content: "";
+  position: absolute;
+  left: 10%; top: 12%;
+  width: 26%; height: 38%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, var(--sun1), var(--sun2) 65%, var(--sun3));
+}
+.bgtile[data-bg="sunset"]::before { left: 56%; top: 42%; width: 34%; height: 48%; }
+.bgtile[data-bg="sky"]::after,
+.bgtile[data-bg="sunset"]::after,
+.bgtile[data-bg="night"]::after {
+  content: "";
+  position: absolute;
+  left: -4%; right: -4%; bottom: 0;
+  height: 26%;
+  background: linear-gradient(var(--gnd2), var(--gnd1));
+  border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+}
+.bgtile[data-bg="night"]::before {
+  content: "";
+  position: absolute;
+  right: 16%; top: 14%;
+  width: 20%; height: 28%;
+  border-radius: 50%;
+  background: #ffeeb0;
+  box-shadow: -34px 8px 0 -7px rgba(255, 255, 255, .85),
+              -18px 30px 0 -8px rgba(255, 255, 255, .7),
+              -52px 34px 0 -8px rgba(255, 255, 255, .6);
+}
+.bgtile[data-bg="paper"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px);
+  background-size: 11px 11px;
+}
+.bgtile[data-bg="sea"]::after {
+  content: "";
+  position: absolute;
+  left: -4%; right: -4%; bottom: 0;
+  height: 28%;
+  background: linear-gradient(var(--sand1), var(--sand2));
+  border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+}
+.bgtile[data-bg="sea"]::before {
+  content: "";
+  position: absolute;
+  left: 26%; top: 30%;
+  width: 12%; height: 18%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .6);
+  box-shadow: 22px -14px 0 -2px rgba(255, 255, 255, .45),
+              44px 10px 0 -1px rgba(255, 255, 255, .4);
+}
+
+.bgtile[data-bg="island"] {
+  background:
+    radial-gradient(circle at 78% 22%, var(--sun2) 0 12%, transparent 12.5%),
+    radial-gradient(17% 12% at 33% 50%, #2f9e44 0 94%, transparent 100%),
+    radial-gradient(35% 12% at 33% 63%, var(--sand1) 0 94%, transparent 100%),
+    linear-gradient(transparent 0 64%, var(--sea1) 64%, var(--sea3) 100%),
+    linear-gradient(var(--bg1), var(--bg3));
+}
+
+/* the card game is pinned to the dotted grid, so it gets no background picker */
+body[data-screen="cards"] #bgtiles { display: none; }
+body[data-screen="cards"] .settings-row { margin-top: 0; }
+
+.settings-row {
+  display: flex;
+  gap: clamp(10px, 1.6vw, 18px);
+  justify-content: center;
+  margin-top: clamp(12px, 1.8vw, 20px);
+}
+.bigbtn {
+  width: clamp(56px, 9vw, 82px);
+  height: clamp(56px, 9vw, 82px);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  transition: transform .12s, background .18s;
+}
+.bigbtn .glyph { position: static; width: 58%; height: 58%; }
+.bigbtn:active { transform: scale(.93); }
+#closeBtn { background: rgba(255, 255, 255, .28); }
+body.muted #muteBtn { background: rgba(255, 96, 96, .38); }
+
+.glyph-muted, body.muted .glyph-sound { display: none; }
+body.muted .glyph-muted { display: block; }
+
+/* ============================ card game ================================= */
+
+/* a centred square 3x3, driven by whichever stage dimension is smaller */
+body[data-screen="cards"] #board {
+  --reserve: calc(var(--big) + var(--flip-inset) + 14px);   /* 14px of daylight */
+  display: grid;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  height: 95%;
+  max-width: min(95%, calc(100% - 2 * var(--reserve)));
+  aspect-ratio: 1;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(6px, 1.5vmin, 18px);
+  z-index: 5;
+}
+/* a tall stage has no room beside the grid, so take the band above it instead */
+@media (max-aspect-ratio: 4/5) {
+  body[data-screen="cards"] #board {
+    height: min(95%, calc(100% - 2 * var(--reserve)));
+    max-width: 95%;
+  }
+}
+
+.card {
+  width: 100%; height: 100%;
+  perspective: 900px;
+  transition: transform .12s;
+}
+.card:active { transform: scale(.955); }
+
+.card-inner {
+  position: relative;
+  width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform .45s cubic-bezier(.35, .05, .25, 1);
+  will-change: transform;
+}
+.card.flipped .card-inner { transform: rotateY(180deg); }
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: clamp(12px, 2.4vmin, 24px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, .16), 0 8px 18px rgba(0, 0, 0, .22);
+}
+.card-front { background: #fff; }
+.card-front svg { width: 80%; height: 80%; overflow: visible; }
+
+/* the back is a flash card: a patterned back carrying the thing's name */
+.card-back {
+  transform: rotateY(180deg);
+  color: #fff;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .42) 2.6px, transparent 3px) 0 0 / 22px 22px,
+    linear-gradient(140deg, #7c6cf0, #4834b8);
+}
+.card-word {
+  font-size: clamp(13px, 3.4vmin, 32px);
+  font-weight: 800;
+  line-height: 1.1;
+  padding: 0 8%;
+  text-align: center;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .32);
+}
+
+/* ---- pick a group ---- */
+body[data-screen="cards"] #catpick.open {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: clamp(10px, 2.4vmin, 28px);
+  padding: clamp(10px, 3vmin, 30px);
+  background: rgba(8, 12, 28, .5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  z-index: 6;
+}
+.cattile {
+  width: clamp(84px, 19vmin, 180px);
+  height: clamp(84px, 19vmin, 180px);
+  border-radius: clamp(16px, 3vmin, 30px);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 9px 0 rgba(0, 0, 0, .2), 0 16px 30px rgba(0, 0, 0, .32);
+  transition: transform .12s, box-shadow .12s;
+}
+.cattile svg { width: 76%; height: 76%; overflow: visible; }
+.cattile:active {
+  transform: translateY(7px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, .2), 0 6px 12px rgba(0, 0, 0, .28);
+}
+
+#flipBtn {
+  background: linear-gradient(#9c8bff, #5b43d6);
+  box-shadow: 0 6px 0 #3d2ba3, 0 10px 22px rgba(0, 0, 0, .32);
+}
+
+/* category buttons keep their subjects' own colours, not the ink colour */
+#cardTools .toolbtn, #catpick .cattile { color: inherit; }
+
+/* ============================ balloons ================================= */
+
+#balloons {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;              /* only the balloons themselves */
+  z-index: 3;
+}
+.balloon {
+  pointer-events: auto;
+  will-change: transform;
+}
+@keyframes pop-away {
+  from { transform: scale(1);    opacity: 1; }
+  40%  { transform: scale(1.35); opacity: .75; }
+  to   { transform: scale(1.65); opacity: 0; }
+}
+.balloon.bursting .obj-pop { animation: pop-away .22s ease-out forwards; }
+
+.confetti {
+  position: absolute;
+  border-radius: 3px;
+  pointer-events: none;
+  animation: confetti-fly .78s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+@keyframes confetti-fly {
+  from { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  to   { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+                    scale(.35) rotate(var(--rot)); opacity: 0; }
+}
+
+/* ========================== scratch to reveal =========================== */
+
+#picLayer {
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.pic-card {
+  height: 72%;
+  max-width: 72%;
+  aspect-ratio: 1;
+  border-radius: 8%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, .1), 0 16px 34px rgba(0, 0, 0, .22);
+}
+.pic { width: 78%; height: 78%; }
+.pic svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+#cover {
+  position: absolute;
+  left: 0; top: 0;
+  pointer-events: none;              /* the stage handles the dragging */
+  z-index: 2;
+}
+
+/* ============================ game chooser ============================== */
+
+#home {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: none;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: radial-gradient(circle at 50% 18%, #74d2ff, #2a80d6 62%, #144e91);
+}
+body[data-screen="home"] #home { display: grid; }
+
+#cards {
+  --home-gap: clamp(12px, 2.2vw, 30px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: var(--home-gap);
+  width: min(96vw, 1180px);
+  max-height: 100%;
+}
+.gamecard {
+  flex: 0 0 calc((100% - 2 * var(--home-gap)) / 3);
+  aspect-ratio: 3 / 2;
+  border-radius: 30px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 14px 0 rgba(0, 0, 0, .22), 0 24px 48px rgba(0, 0, 0, .38);
+  transition: transform .14s, box-shadow .14s;
+}
+.gamecard:active {
+  transform: translateY(9px);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, .22), 0 10px 20px rgba(0, 0, 0, .32);
+}
+@media (orientation: portrait) {
+  #cards { width: min(94vw, 780px); }
+  /* must come after .gamecard: its `flex` shorthand resets flex-basis */
+  .gamecard { flex-basis: calc((100% - var(--home-gap)) / 2); }
+}
+
+.card-art { display: block; width: 100%; height: 100%; }
