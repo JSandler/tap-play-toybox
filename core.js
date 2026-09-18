@@ -339,6 +339,8 @@ muteBtn.addEventListener('pointerdown', function () {
 });
 
 homeBtn.addEventListener('pointerdown', function () {
+  var g = App.games[App.screen];
+  if (g && g.clear) { g.clear(); }
   closePanels();
   setScreen('home');
 });
